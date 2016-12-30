@@ -22,7 +22,6 @@
 #
 # Created on 17 December 2016
 #
-from __future__ import unicode_literals, print_function
 from __future__ import unicode_literals
 
 """search.py [<query>]
@@ -37,22 +36,12 @@ Usage:
 import sys
 import requests
 import json
-from pprint import pprint
 from collections import OrderedDict
 from workflow import Workflow3, ICON_WEB, ICON_WARNING
 
-HEADERS = {'user-agent': 'Alfred Wikipedia Search 0.0.1'}
 HEADERS = {'user-agent': 'Alfred Wikipedia Search 1.0.0'}
 
 log = None
-"""Debug parameter
-Possible values:
-0 - no debug
-1 - verbose
-2 - very verbose
-3 - dev only
-"""
-debug = 0
 
 def normalize(title):
     return(title.replace(' ', '_'))
@@ -61,54 +50,6 @@ def get_thumbnail(image_url):
     thumb = requests.get(image_url)
     return(image_url)
 
-def parse_results(results):
-    """Parse Wikipedia (or potentially any MediaWiki) results into
-    title, subtitle, etc.
-
-    """
-    items = []
-    # Sort the results first using Wikipedia's index to get
-    # our results in the same order as Wikipedia and stop Alfred
-    # from doing it instead
-    sorted_results = sorted(results.items(), key=lambda x: x[1]['index'])
-    if debug == 3:
-        pprint(sorted_results)
-    for key, value in sorted_results:
-        dct = dict()
-        title = value['title']
-        # Get the extract if it exists or else fail gracefully
-        try:
-            subtitle = value['extract']
-        except:
-            subtitle = ''
-        # try to get the thumbnail url and somehow get Alfred to use it?
-        try:
-            image_url = get_thumbnail(value['thumbnail']['source'])
-            icon = dict()
-            icon['type'] = 'filetype'
-            icon['path'] = image_url
-            dct['icon'] = icon
-        except:
-            pass
-        # Get mobile page URL for quick look
-        quicklookurl = get_quicklook_url(value['title'])
-        dct['quicklookurl'] = quicklookurl
-        # Get normal web page URL for opening directly in default browser
-        page_url = get_page_url(value['title'])
-        dct['arg'] = page_url
-        if debug == 2:
-            print(index)
-            print(title)
-            print(subtitle)
-        dct['title'] = title
-        dct['subtitle'] = subtitle
-        dct['largetext'] = subtitle
-        dct['copytext'] = title
-        dct['valid'] = True
-        items.append(dct)
-    if debug == 3:
-        pprint(items)
-    return(items)
 def fetch(url):
     # I want to prefetch pages for QuickLook
     page = requests.get(url)
@@ -128,8 +69,6 @@ def prepare_feedback(wf, items):
                     icon=ICON_WARNING)
         wf.send_feedback()
 
-def search(wf, query):
-    """Search Wikipedia for `query`.
 class SearchEngine:
 
     _DEFAULT_ENGINE = {
@@ -240,39 +179,6 @@ class SearchEngine:
             items.append(dct)
         return(items)
 
-    """
-    # Wikipedia search parameters
-    search_params = {
-        'action': 'query',
-        'gsrsearch': query,
-        'format': 'json',
-        'prop': 'extracts',
-        'generator': 'search',
-        'gsrnamespace': '0',
-        'gsrlimit': 10,
-        'redirects': 1,
-        'explaintext': '',
-        'exsentences': 5,
-        'exintro': 2,
-        'exlimit': 'max',
-        'excontinue': 1
-    }
-
-    # Request results in JSON
-    r = requests.get(API_URL, params=search_params)
-    r.raise_for_status()
-    data = json.loads(r.content)
-    if debug == 2:
-        print(type(data))
-        pprint(data)
-
-    # Get only the results we want
-    results = data['query']['pages']
-    items = parse_results(results)
-    if debug == 3:
-        print(type(results))
-        pprint(results)
-        pprint(items)
 def main(wf):
     # This is where I will introduce some logic in order to determine
     # which search engine is being used and/or let users set the engine
@@ -291,9 +197,6 @@ def main(wf):
     wf.cache_data('results', items)
     # Prepare and send feedback to Alfred
     prepare_feedback(wf, items)
-
-def main(wf):
-    return(search(wf, wf.args[0]))
 
 if __name__ == '__main__':
     wf = Workflow3()
